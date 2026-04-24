@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>猜文章小游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* 页面切换 */
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 关卡选择页面 */
+        .level-select h1 {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .level-select .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .level-select .hint {
+            text-align: center;
+            color: #3498db;
+            font-size: 13px;
+            margin-bottom: 20px;
+            background: #e8f4fd;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .levels-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .level-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            position: relative;
+            overflow: hidden;
+            border: 2px solid transparent;
+        }
+
+        .level-card:hover:not(.locked) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            border-color: #3498db;
+        }
+
+        .level-card:active:not(.locked) {
+            transform: translateY(0);
+        }
+
+        .level-card.locked {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: #f0f0f0;
+        }
+
+        .level-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #3498db;
+            margin-bottom: 8px;
+        }
+
+        .level-card.locked .level-number {
+            color: #bdc3c7;
+        }
+
+        .level-title {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .level-status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .level-card.unlocked .level-status {
+            background: #e8f5e8;
+            color: #27ae60;
+        }
+
+        .level-card.locked .level-status {
+            background: #f0f0f0;
+            color: #95a5a6;
+        }
+
+        .start-hint {
+            font-size: 11px;
+            color: #3498db;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
+        .lock-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 16px;
+            opacity: 0.5;
+        }
+
+        /* 开始按钮 */
+        .start-btn {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto 0;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .start-btn:active {
+            transform: translateY(0);
+        }
+
+        /* 游戏页面 */
+        .game-page {
+            padding-bottom: 100px;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .game-title {
+            font-size: 18px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .guess-count {
+            background: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        .guess-count span {
+            color: #3498db;
+            font-weight: 600;
+        }
+
+        .exit-btn {
+            background: #ecf0f1;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: #7f8c8d;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .exit-btn:hover {
+            background: #dfe6e9;
+            color: #2c3e50;
+        }
+
+        .article-container {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            line-height: 2;
+            font-size: 16px;
+            word-break: break-all;
+        }
+
+        .char {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            margin: 1px;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .char.hidden {
+            background: #2c3e50;
+            color: transparent;
+        }
+
+        .char.revealed {
+            background: #e8f5e8;
+            color: #2c3e50;
+            animation: revealChar 0.3s ease;
+        }
+
+        .char.punctuation {
+            background: transparent;
+            color: #7f8c8d;
+            width: auto;
+            padding: 0 2px;
+        }
+
+        .char.title-char {
+            font-weight: 600;
+        }
+
+        .char.title-char.revealed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        @keyframes revealChar {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 -2px 20px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .input-area .container {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .guess-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .guess-input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .submit-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 通关弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            max-width: 300px;
+            width: 90%;
+            animation: scaleIn 0.3s ease;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        .modal-title {
+            font-size: 22px;
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .modal-message {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .modal-message span {
+            color: #e74c3c;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .modal-btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #27ae60, #219a52);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        /* 提示信息 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 400px) {
+            body {
+                padding: 15px;
+            }
+
+            .levels-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .char {
+                width: 26px;
+                height: 26px;
+                line-height: 26px;
+                font-size: 15px;
+            }
+
+            .article-container {
+                font-size: 15px;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 关卡选择页面 -->
+        <div id="levelSelectPage" class="page level-select active">
+            <h1>猜文章小游戏</h1>
+            <p class="subtitle">猜出文章标题的所有字即可通关</p>
+            <div class="levels-grid" id="levelsGrid">
+                <!-- 关卡卡片会通过JS动态生成 -->
+            </div>
+        </div>
+
+        <!-- 游戏页面 -->
+        <div id="gamePage" class="page game-page">
+            <div class="game-header">
+                <button class="exit-btn" onclick="goToLevelSelect()">← 返回</button>
+                <div class="game-title" id="gameTitle">静夜思</div>
+                <div class="guess-count">猜字次数: <span id="guessCount">0</span></div>
+            </div>
+            <div class="article-container" id="articleContainer">
+                <!-- 文章内容会通过JS动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="input-area" id="inputArea" style="display: none;">
+        <div class="container">
+            <input type="text" class="guess-input" id="guessInput" placeholder="输入你要猜的字..." maxlength="10">
+            <button class="submit-btn" onclick="submitGuess()">提交</button>
+        </div>
+    </div>
+
+    <!-- 通关弹窗 -->
+    <div class="modal-overlay" id="winModal">
+        <div class="modal-content">
+            <div class="modal-icon">🎉</div>
+            <div class="modal-title">恭喜通关！</div>
+            <div class="modal-message">你总共猜了 <span id="finalCount">0</span> 次</div>
+            <button class="modal-btn" onclick="closeModal()">继续</button>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ==================== 关卡数据定义 ====================
+        // 在这里可以轻松添加/修改关卡，无需修改游戏逻辑
+        const levels = [
+            {
+                id: 1,
+                title: "静夜思",
+                content: "《静夜思》是唐代大诗人李白的诗作，出自《李太白集》。此诗描写了旅居在外的抒情主人公秋日夜晚在屋内抬头望月而思念家乡的感受。前两句写主人公在作客他乡的特定环境中一刹那间所产生的错觉；后两句通过动作神态的刻画，深化主人公的思乡之情。全诗运用比喻、衬托等手法，表达客居思乡之情，语言清新朴素而韵味含蓄无穷，历来广为传诵。",
+                unlocked: true
+            },
+            {
+                id: 2,
+                title: "待解锁",
+                content: "敬请期待...",
+                unlocked: false
+            },
+            {
+                id: 3,
+                title: "待解锁",
+                content: "敬请期待...",
+                unlocked: false
+            },
+            {
+                id: 4,
+                title: "待解锁",
+                content: "敬请期待...",
+                unlocked: false
+            }
+            // 可以继续添加更多关卡...
+        ];
+
+        // ==================== 游戏状态 ====================
+        let currentLevel = null;
+        let guessCount = 0;
+        let revealedChars = new Set();
+        let titleChars = new Set();
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            initLevelSelect();
+            
+            // 输入框回车提交
+            document.getElementById('guessInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitGuess();
+                }
+            });
+
+            // 输入框聚焦时滚动到可见区域
+            document.getElementById('guessInput').addEventListener('focus', function() {
+                setTimeout(() => {
+                    this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            });
+        });
+
+        // ==================== 关卡选择页面 ====================
+        function initLevelSelect() {
+            const grid = document.getElementById('levelsGrid');
+            grid.innerHTML = '';
+
+            levels.forEach(level => {
+                const card = document.createElement('div');
+                card.className = `level-card ${level.unlocked ? 'unlocked' : 'locked'}`;
+                
+                if (level.unlocked) {
+                    card.onclick = () => {
+                        console.log('点击关卡', level.id);
+                        startGame(level.id);
+                    };
+                    // 添加点击反馈
+                    card.style.cursor = 'pointer';
+                }
+
+                card.innerHTML = `
+                    ${!level.unlocked ? '<span class="lock-icon">🔒</span>' : ''}
+                    <div class="level-number">${level.id}</div>
+                    <div class="level-title">${level.title}</div>
+                    <div class="level-status">${level.unlocked ? '已解锁' : '未解锁'}</div>
+                    ${level.unlocked ? '<div class="start-hint">点击开始 →</div>' : ''}
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        // 快速开始第一关
+        function startFirstLevel() {
+            console.log('快速开始第一关');
+            startGame(1);
+        }
+
+        // ==================== 游戏页面 ====================
+        function startGame(levelId) {
+            console.log('开始游戏', levelId);
+            currentLevel = levels.find(l => l.id === levelId);
+            if (!currentLevel) {
+                console.error('找不到关卡', levelId);
+                showToast('关卡不存在');
+                return;
+            }
+            
+            if (!currentLevel.unlocked) {
+                showToast('该关卡尚未解锁');
+                return;
+            }
+
+            // 重置游戏状态
+            guessCount = 0;
+            revealedChars.clear();
+            titleChars.clear();
+
+            // 提取标题字符
+            [...currentLevel.title].forEach(char => {
+                if (!isPunctuation(char)) {
+                    titleChars.add(char);
+                }
+            });
+
+            // 更新UI
+            document.getElementById('gameTitle').textContent = currentLevel.title;
+            document.getElementById('guessCount').textContent = '0';
+            
+            // 渲染文章内容
+            renderArticle();
+
+            // 切换页面
+            showPage('gamePage');
+            document.getElementById('inputArea').style.display = 'block';
+            
+            // 清空输入框
+            document.getElementById('guessInput').value = '';
+            document.getElementById('guessInput').focus();
+            
+            console.log('游戏页面已加载');
+        }
+
+        function renderArticle() {
+            const container = document.getElementById('articleContainer');
+            container.innerHTML = '';
+
+            const content = currentLevel.content;
+            
+            [...content].forEach(char => {
+                const span = document.createElement('span');
+                span.className = 'char';
+                span.textContent = char;
+                span.dataset.char = char;
+
+                if (isPunctuation(char)) {
+                    // 标点符号直接显示
+                    span.classList.add('punctuation');
+                } else {
+                    // 其他字符默认隐藏
+                    span.classList.add('hidden');
+                    
+                    // 标记是否是标题字符
+                    if (titleChars.has(char)) {
+                        span.classList.add('title-char');
+                    }
+                }
+
+                container.appendChild(span);
+            });
+        }
+
+        // ==================== 猜字逻辑 ====================
+        function submitGuess() {
+            const input = document.getElementById('guessInput');
+            const guess = input.value.trim();
+
+            // 输入验证
+            if (!guess) {
+                showToast('请输入要猜的字');
+                return;
+            }
+
+            if (guess.length < 1 || guess.length > 10) {
+                showToast('请输入1-10个字');
+                return;
+            }
+
+            // 统计猜字次数
+            guessCount++;
+            document.getElementById('guessCount').textContent = guessCount;
+
+            // 处理每个输入的字符
+            let hasMatch = false;
+            const chars = [...guess];
+
+            chars.forEach(char => {
+                if (revealedChars.has(char)) return;
+
+                // 检查字符是否在文章中
+                const elements = document.querySelectorAll(`.char[data-char="${char}"]`);
+                if (elements.length > 0) {
+                    hasMatch = true;
+                    revealedChars.add(char);
+                    
+                    // 显示所有匹配的字符
+                    elements.forEach(el => {
+                        el.classList.remove('hidden');
+                        el.classList.add('revealed');
+                    });
+                }
+            });
+
+            // 清空输入框
+            input.value = '';
+            input.focus();
+
+            // 反馈
+            if (hasMatch) {
+                showToast('猜对了！');
+            } else {
+                showToast('没有这个字哦~');
+            }
+
+            // 检查是否通关
+            checkWin();
+        }
+
+        function checkWin() {
+            // 检查标题的所有字是否都被猜中
+            const allRevealed = [...titleChars].every(char => revealedChars.has(char));
+            
+            if (allRevealed) {
+                // 通关
+                setTimeout(() => {
+                    document.getElementById('finalCount').textContent = guessCount;
+                    document.getElementById('winModal').classList.add('show');
+                }, 500);
+            }
+        }
+
+        // ==================== 工具函数 ====================
+        function isPunctuation(char) {
+            // 判断是否是标点符号
+            const punctuation = '，。、；：？！"\'（）《》〈〉【】『』——…·';
+            return punctuation.includes(char);
+        }
+
+        function showPage(pageId) {
+            console.log('切换页面到', pageId);
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                console.log('页面切换成功');
+            } else {
+                console.error('找不到页面', pageId);
+            }
+        }
+
+        function goToLevelSelect() {
+            showPage('levelSelectPage');
+            document.getElementById('inputArea').style.display = 'none';
+        }
+
+        function closeModal() {
+            document.getElementById('winModal').classList.remove('show');
+            goToLevelSelect();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
