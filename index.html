@@ -197,9 +197,33 @@
         }
 
         .game-title {
-            font-size: 18px;
-            color: #2c3e50;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            align-items: center;
+            min-height: 36px;
+            max-width: 220px;
+        }
+
+        .game-title .char {
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            margin: 1px;
+            border-radius: 6px;
+            font-size: 16px;
             font-weight: 600;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            background: #f0f0f0;
+            color: #7f8c8d;
+        }
+
+        .game-title .char.hidden {
+            background: #2c3e50;
+            color: transparent;
         }
 
         .guess-count {
@@ -495,7 +519,7 @@
         <div id="gamePage" class="page game-page">
             <div class="game-header">
                 <button class="exit-btn" onclick="goToLevelSelect()">← 返回</button>
-                <div class="game-title" id="gameTitle">静夜思</div>
+                <div class="game-title" id="gameTitle"></div>
                 <div class="guess-count">猜字次数: <span id="guessCount">0</span></div>
             </div>
             <div class="article-container" id="articleContainer">
@@ -602,7 +626,6 @@
                 card.innerHTML = `
                     ${!level.unlocked ? '<span class="lock-icon">🔒</span>' : ''}
                     <div class="level-number">${level.id}</div>
-                    <div class="level-title">${level.title}</div>
                     <div class="level-status">${level.unlocked ? '已解锁' : '未解锁'}</div>
                     ${level.unlocked ? '<div class="start-hint">点击开始 →</div>' : ''}
                 `;
@@ -645,7 +668,7 @@
             });
 
             // 更新UI
-            document.getElementById('gameTitle').textContent = currentLevel.title;
+            renderTitle();
             document.getElementById('guessCount').textContent = '0';
             
             // 渲染文章内容
@@ -660,6 +683,27 @@
             document.getElementById('guessInput').focus();
             
             console.log('游戏页面已加载');
+        }
+
+        function renderTitle() {
+            const titleContainer = document.getElementById('gameTitle');
+            titleContainer.innerHTML = '';
+
+            const title = currentLevel.title;
+            [...title].forEach(char => {
+                const span = document.createElement('span');
+                span.className = 'char title-char';
+                span.textContent = char;
+                span.dataset.char = char;
+
+                if (isPunctuation(char)) {
+                    span.classList.add('punctuation');
+                } else {
+                    span.classList.add('hidden');
+                }
+
+                titleContainer.appendChild(span);
+            });
         }
 
         function renderArticle() {
